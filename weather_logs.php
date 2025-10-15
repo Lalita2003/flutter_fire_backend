@@ -13,7 +13,6 @@ if (!$burnRequestId) {
     exit;
 }
 
-// Query เอาข้อมูล weather_logs ทั้งหมดของ burn_request_id
 $sql = "
     SELECT id, burn_request_id, fetch_time, forecast_date, forecast_hour,
            temperature, humidity, wind_speed, boundary_height, pm25_model
@@ -23,11 +22,23 @@ $sql = "
 ";
 
 $stmt = pg_prepare($con, "get_weather_logs", $sql);
+if (!$stmt) {
+    echo json_encode([
+        "status" => "error",
+        "message" => "Failed to prepare query",
+        "error" => pg_last_error($con)
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
 $result = pg_execute($con, "get_weather_logs", array($burnRequestId));
 
 $weatherLogs = [];
 if ($result) {
     while ($row = pg_fetch_assoc($result)) {
+        $row['fetch_time'] = $row['fetch_time'] ? $row['fetch_time'] : null;
+        $row['forecast_date'] = $row['forecast_date'] ? $row['forecast_date'] : null;
+        $row['forecast_hour'] = $row['forecast_hour'] ? $row['forecast_hour'] : null;
         $weatherLogs[] = $row;
     }
 }
