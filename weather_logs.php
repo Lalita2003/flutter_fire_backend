@@ -1,11 +1,9 @@
 <?php
 header("Access-Control-Allow-Origin: *");
 header("Content-Type: application/json; charset=UTF-8");
+require 'connect.php'; // pg_connect
 
-require 'connect.php'; // connect.php สำหรับ PostgreSQL (pg_connect)
-
-// ดึง burn_request_id จาก query string
-$burnRequestId = isset($_GET['burn_request_id']) ? intval($_GET['burn_request_id']) : null;
+$burnRequestId = $_GET['burn_request_id'] ?? null;
 
 if (!$burnRequestId) {
     echo json_encode([
@@ -15,7 +13,7 @@ if (!$burnRequestId) {
     exit;
 }
 
-// SQL query
+// Query เอาข้อมูล weather_logs ทั้งหมดของ burn_request_id
 $sql = "
     SELECT id, burn_request_id, fetch_time, forecast_date, forecast_hour,
            temperature, humidity, wind_speed, boundary_height, pm25_model
@@ -24,32 +22,21 @@ $sql = "
     ORDER BY forecast_hour ASC
 ";
 
-// เตรียม query
-$stmt = pg_prepare($con, "get_weather_logs", $sql);
-if (!$stmt) {
+$res = pg_query_params($con, $sql, [$burnRequestId]);
+
+if (!$res) {
     echo json_encode([
         "status" => "error",
-        "message" => "Failed to prepare query",
-        "error" => pg_last_error($con)
+        "message" => pg_last_error($con)
     ], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
-// Execute query
-$result = pg_execute($con, "get_weather_logs", array($burnRequestId));
-
 $weatherLogs = [];
-if ($result) {
-    while ($row = pg_fetch_assoc($result)) {
-        // แปลงค่า timestamp/time/date เป็น string ถ้ามี
-        $row['fetch_time'] = $row['fetch_time'] ?? null;
-        $row['forecast_date'] = $row['forecast_date'] ?? null;
-        $row['forecast_hour'] = $row['forecast_hour'] ?? null;
-        $weatherLogs[] = $row;
-    }
+while ($row = pg_fetch_assoc($res)) {
+    $weatherLogs[] = $row;
 }
 
-// ส่งผลลัพธ์ JSON
 if (!empty($weatherLogs)) {
     echo json_encode([
         "status" => "success",
@@ -62,6 +49,5 @@ if (!empty($weatherLogs)) {
     ], JSON_UNESCAPED_UNICODE);
 }
 
-// ปิดการเชื่อมต่อ
 pg_close($con);
 ?>
