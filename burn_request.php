@@ -16,22 +16,16 @@ $input = json_decode(file_get_contents("php://input"), true);
 // เขียน log สำหรับ debug
 file_put_contents('log.txt', date('Y-m-d H:i:s') . " - " . json_encode($input) . "\n", FILE_APPEND);
 
-// --- POST: สร้าง burn_request ใหม่ ---
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $required = ["user_id","area_name","area_size","location_lat","location_lng","request_date","time_slot_from","purpose","crop_type"];
     foreach($required as $f){
         if(!isset($input[$f])){
             http_response_code(400);
-            echo json_encode(["success"=>false, "message" => "Missing field $f"]);
+            echo json_encode(["error" => "Missing field $f"]);
             exit();
         }
     }
 
-    // --- แก้ปัญหา duplicate key ---
-    // ตั้ง sequence ให้ตรงกับ MAX(id)
-    pg_query($con, "SELECT setval('burn_requests_id_seq', (SELECT COALESCE(MAX(id),0) FROM burn_requests))");
-
-    // --- Insert burn_request ใหม่ ---
     $sql = "INSERT INTO burn_requests 
         (user_id, area_name, area_size, location_lat, location_lng, request_date, time_slot_from, purpose, crop_type, status)
         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id";
@@ -55,7 +49,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     if($res){
         $burnRequestId = pg_fetch_result($res,0,'id');
 
-        // --- UPDATE weather_logs ---
+        // UPDATE weather_logs
         $updateSql = "UPDATE weather_logs SET burn_request_id=$1 WHERE burn_request_id IS NULL AND forecast_date=$2";
         pg_query_params($con, $updateSql, [$burnRequestId, $input['request_date']]);
 
@@ -73,7 +67,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     }
 }
 
-// --- GET: ดึงข้อมูลทั้งหมด ---
+// GET: ดึงข้อมูลทั้งหมด
 if ($_SERVER["REQUEST_METHOD"] === "GET") {
     $res = pg_query($con, "SELECT * FROM burn_requests ORDER BY id DESC");
     $requests = [];
