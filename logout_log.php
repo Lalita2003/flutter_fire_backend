@@ -22,6 +22,10 @@ if (empty($user_id) || empty($role) || empty($description)) {
 // แปลง user_id เป็น int เพื่อป้องกัน TypeError
 $user_id = (int)$user_id;
 
+// **ปรับ sequence ของ system_logs.id ก่อน insert**
+$seq_sql = "SELECT setval('system_logs_id_seq', COALESCE((SELECT MAX(id) FROM system_logs),0))";
+pg_query($con, $seq_sql);
+
 // บันทึก log การ Logout
 $action = 'logout';
 $result = pg_prepare($con, "insert_log", 
