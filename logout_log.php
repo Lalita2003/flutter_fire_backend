@@ -19,6 +19,9 @@ if (empty($user_id) || empty($role) || empty($description)) {
     exit();
 }
 
+// แปลง user_id เป็น int เพื่อป้องกัน TypeError
+$user_id = (int)$user_id;
+
 // บันทึก log การ Logout
 $action = 'logout';
 $result = pg_prepare($con, "insert_log", 
@@ -30,10 +33,12 @@ if ($result) {
     if ($exec) {
         echo json_encode(['status' => 'success', 'message' => 'Logout log saved successfully']);
     } else {
-        echo json_encode(['status' => 'error', 'message' => 'Failed to save logout log']);
+        $error = pg_last_error($con);
+        echo json_encode(['status' => 'error', 'message' => 'Failed to save logout log', 'error' => $error]);
     }
 } else {
-    echo json_encode(['status' => 'error', 'message' => 'Failed to prepare query']);
+    $error = pg_last_error($con);
+    echo json_encode(['status' => 'error', 'message' => 'Failed to prepare query', 'error' => $error]);
 }
 
 pg_close($con);
