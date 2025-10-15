@@ -13,6 +13,7 @@ if (!$burnRequestId) {
     exit;
 }
 
+// Prepare query
 $sql = "
     SELECT id, burn_request_id, fetch_time, forecast_date, forecast_hour,
            temperature, humidity, wind_speed, boundary_height, pm25_model
@@ -31,14 +32,19 @@ if (!$stmt) {
     exit;
 }
 
-$result = pg_execute($con, "get_weather_logs", array($burnRequestId));
+// Execute query
+$result = pg_execute($con, "get_weather_logs", [$burnRequestId]);
 
 $weatherLogs = [];
 if ($result) {
     while ($row = pg_fetch_assoc($result)) {
-        $row['fetch_time'] = $row['fetch_time'] ? $row['fetch_time'] : null;
-        $row['forecast_date'] = $row['forecast_date'] ? $row['forecast_date'] : null;
-        $row['forecast_hour'] = $row['forecast_hour'] ? $row['forecast_hour'] : null;
+        // แปลงเวลา forecast_hour เป็น HH:mm
+        if (isset($row['forecast_hour'])) {
+            $timeObj = date_create($row['forecast_hour']);
+            $row['forecast_hour'] = $timeObj ? date_format($timeObj, "H:i") : null;
+        }
+        $row['fetch_time'] = $row['fetch_time'] ?? null;
+        $row['forecast_date'] = $row['forecast_date'] ?? null;
         $weatherLogs[] = $row;
     }
 }
