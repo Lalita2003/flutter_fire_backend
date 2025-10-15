@@ -6,37 +6,56 @@ header('Content-Type: application/json; charset=utf-8');
 
 include 'connect.php'; // $con เป็น pg_connect
 
-if (!isset($_POST['id'], $_POST['current_password'], $_POST['new_password'])) {
-    echo json_encode(['status' => 'error', 'message' => 'ข้อมูลไม่ครบ']);
+// ตรวจสอบ id
+if (!isset($_POST['id'])) {
+    echo json_encode(['status' => 'error', 'message' => 'ไม่มีการส่ง userId มา']);
     exit();
 }
 
-$userId = intval($_POST['id']); // มั่นใจว่าเป็น int
-$currentPassword = $_POST['current_password'];
-$newPassword = $_POST['new_password'];
+$userId = intval($_POST['id']);
+$username = $_POST['username'] ?? '';
+$lastname = $_POST['lastname'] ?? '';
+$phone = $_POST['phone'] ?? '';
+$village = $_POST['village'] ?? '';
+$agency = $_POST['agency'] ?? '';
+$province_name = $_POST['province'] ?? '';
+$district_name = $_POST['district'] ?? '';
+$subdistrict_name = $_POST['subdistrict'] ?? '';
 
-// ตรวจสอบรหัสผ่านปัจจุบัน
-$res = pg_query_params($con, "SELECT password FROM users WHERE id=$1", [$userId]);
-if (!$res || pg_num_rows($res) === 0) {
-    echo json_encode(['status' => 'error', 'message' => 'ไม่พบผู้ใช้']);
+// ฟังก์ชันแปลงชื่อเป็น id
+function getIdByName($con, $table, $name) {
+    $res = pg_query_params($con, "SELECT id FROM $table WHERE name_th = $1 LIMIT 1", [$name]);
+    if ($res && pg_num_rows($res) > 0) {
+        $row = pg_fetch_assoc($res);
+        return $row['id'];
+    }
+    return null;
+}
+
+// แปลงชื่อเป็น id
+$province_id = getIdByName($con, 'thai_provinces', $province_name);
+$district_id = getIdByName($con, 'thai_amphures', $district_name);
+$subdistrict_id = getIdByName($con, 'thai_tambons', $subdistrict_name);
+
+// ตรวจสอบค่าที่จำเป็น
+if (!$province_id || !$district_id || !$subdistrict_id) {
+    echo json_encode(['status' => 'error', 'message' => 'จังหวัด/อำเภอ/ตำบลไม่ถูกต้อง']);
     exit();
 }
 
-$row = pg_fetch_assoc($res);
-if ($row['password'] !== $currentPassword) { // ถ้าใช้ hash ต้องปรับตาม hash
-    echo json_encode(['status' => 'error', 'message' => 'รหัสผ่านปัจจุบันไม่ถูกต้อง']);
-    exit();
-}
+// UPDATE ข้อมูลผู้ใช้
+$sql = "UPDATE users 
+        SET username=$1, lastname=$2, phone=$3, village=$4, agency=$5, province_id=$6, district_id=$7, subdistrict_id=$8 
+        WHERE id=$9";
 
-// UPDATE รหัสผ่านใหม่
-$res = pg_query_params($con, "UPDATE users SET password=$1 WHERE id=$2", [$newPassword, $userId]);
+$res = pg_query_params($con, $sql, [
+    $username, $lastname, $phone, $village, $agency,
+    $province_id, $district_id, $subdistrict_id,
+    $userId
+]);
 
 if ($res) {
-    echo json_encode([
-        'status' => 'success',
-        'message' => 'เปลี่ยนรหัสผ่านเรียบร้อย',
-        'user_id' => $userId // ส่งกลับเป็น int ให้ Flutter ใช้
-    ]);
+    echo json_encode(['status' => 'success', 'message' => 'อัปเดตข้อมูลเรียบร้อย']);
 } else {
     echo json_encode(['status' => 'error', 'message' => pg_last_error($con)]);
 }
