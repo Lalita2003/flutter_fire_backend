@@ -1,4 +1,7 @@
 <?php
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
 // อ่านค่าจาก Environment Variables
 $db_host = getenv('DB_HOST');      // เช่น ep-still-tree-a147kofb-pooler.ap-southeast-1.aws.neon.tech
 $db_port = getenv('DB_PORT');      // 5432
