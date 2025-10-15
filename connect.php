@@ -1,10 +1,10 @@
 <?php
-// ข้อมูลเชื่อมต่อ PostgreSQL จาก Neon
-$db_host = "ep-still-tree-a147kofb-pooler.ap-southeast-1.aws.neon.tech";
-$db_port = "5432"; // default PostgreSQL port
-$db_name = "neondb";
-$db_user = "neondb_owner";
-$db_pass = "npg_AHf9TCMjU0on";
+// อ่านค่าจาก Environment Variables
+$db_host = getenv('DB_HOST');      // เช่น ep-still-tree-a147kofb-pooler.ap-southeast-1.aws.neon.tech
+$db_port = getenv('DB_PORT');      // 5432
+$db_name = getenv('DB_NAME');      // neondb
+$db_user = getenv('DB_USER');      // neondb_owner
+$db_pass = getenv('DB_PASS');      // npg_AHf9TCMjU0on
 
 // สร้าง connection string
 $conn_string = "host=$db_host port=$db_port dbname=$db_name user=$db_user password=$db_pass sslmode=require";
