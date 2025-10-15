@@ -13,21 +13,22 @@ if (!isset($_POST['id'])) {
 }
 
 $userId = intval($_POST['id']);
-$username = $_POST['username'] ?? '';
-$lastname = $_POST['lastname'] ?? '';
-$phone = $_POST['phone'] ?? '';
-$village = $_POST['village'] ?? '';
-$agency = $_POST['agency'] ?? '';
-$province_name = $_POST['province'] ?? '';
-$district_name = $_POST['district'] ?? '';
-$subdistrict_name = $_POST['subdistrict'] ?? '';
+$username = trim($_POST['username'] ?? '');
+$lastname = trim($_POST['lastname'] ?? '');
+$phone = trim($_POST['phone'] ?? '');
+$village = trim($_POST['village'] ?? '');
+$agency = trim($_POST['agency'] ?? '');
+$province_name = trim($_POST['province'] ?? '');
+$district_name = trim($_POST['district'] ?? '');
+$subdistrict_name = trim($_POST['subdistrict'] ?? '');
 
 // ฟังก์ชันแปลงชื่อเป็น id
 function getIdByName($con, $table, $name) {
+    if (empty($name)) return null;
     $res = pg_query_params($con, "SELECT id FROM $table WHERE name_th = $1 LIMIT 1", [$name]);
     if ($res && pg_num_rows($res) > 0) {
         $row = pg_fetch_assoc($res);
-        return $row['id'];
+        return intval($row['id']); // แปลงเป็น int ตรงนี้เลย
     }
     return null;
 }
@@ -43,6 +44,11 @@ if (!$province_id || !$district_id || !$subdistrict_id) {
     exit();
 }
 
+if (empty($username) || empty($lastname)) {
+    echo json_encode(['status' => 'error', 'message' => 'กรุณากรอกชื่อผู้ใช้และนามสกุล']);
+    exit();
+}
+
 // UPDATE ข้อมูลผู้ใช้
 $sql = "UPDATE users 
         SET username=$1, lastname=$2, phone=$3, village=$4, agency=$5, province_id=$6, district_id=$7, subdistrict_id=$8 
@@ -55,7 +61,11 @@ $res = pg_query_params($con, $sql, [
 ]);
 
 if ($res) {
-    echo json_encode(['status' => 'success', 'message' => 'อัปเดตข้อมูลเรียบร้อย']);
+    echo json_encode([
+        'status' => 'success',
+        'message' => 'อัปเดตข้อมูลเรียบร้อย',
+        'user_id' => $userId // ส่งกลับเป็น int ให้ Flutter ใช้ได้เลย
+    ]);
 } else {
     echo json_encode(['status' => 'error', 'message' => pg_last_error($con)]);
 }
