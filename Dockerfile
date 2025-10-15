@@ -10,8 +10,10 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# เปิด mod_rewrite และตั้งค่า AllowOverride
+RUN a2enmod rewrite
+
 # ตั้ง environment variables ของ Neon PostgreSQL
-# Render จะ override ตัวแปรเหล่านี้จาก Environment Variables ของ service
 ENV DB_HOST=localhost
 ENV DB_PORT=5432
 ENV DB_NAME=neondb
@@ -21,12 +23,17 @@ ENV DB_PASS=your_password
 # คัดลอกโค้ด PHP ไปยัง container
 COPY . /var/www/html/
 
-# ตั้งค่า Apache ให้รองรับ .htaccess (ถ้าจำเป็น)
-RUN a2enmod rewrite
-
-# ตั้ง permission สำหรับ log และ upload folder (ถ้ามี)
+# ตั้ง permission ให้ Apache อ่านและเขียนได้
 RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html
+
+# สร้างไฟล์ Apache config ใหม่ เพื่อ AllowOverride และ Require all granted
+RUN echo '<Directory /var/www/html>\n\
+    Options Indexes FollowSymLinks\n\
+    AllowOverride All\n\
+    Require all granted\n\
+</Directory>' > /etc/apache2/conf-available/allow-html.conf \
+    && a2enconf allow-html
 
 # Expose port 80
 EXPOSE 80
