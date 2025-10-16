@@ -6,8 +6,7 @@ header("Content-Type: application/json; charset=UTF-8");
 
 require 'connect.php'; // ใช้ pg_connect ของ Neon
 
-$input = json_decode(file_get_contents("php://input"), true);
-$username = isset($input['username']) ? trim($input['username']) : '';
+$username = isset($_POST['username']) ? trim($_POST['username']) : '';
 
 if (empty($username)) {
     echo json_encode([
