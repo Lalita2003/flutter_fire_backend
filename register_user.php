@@ -6,78 +6,55 @@ header("Content-Type: application/json; charset=UTF-8");
 
 require 'connect.php'; // pg_connect
 
-// รับข้อมูลจาก POST หรือ JSON
-$input = $_POST;
-if (empty($input)) {
-    $input = json_decode(file_get_contents('php://input'), true);
+$input = json_decode(file_get_contents("php://input"), true);
+
+// ตรวจสอบฟิลด์ required
+$required = ['username', 'firstname', 'lastname', 'phone', 'village', 'province_id', 'district_id', 'subdistrict_id', 'password'];
+
+foreach ($required as $field) {
+    if (empty($input[$field])) {
+        echo json_encode(['status' => 'error', 'message' => "ข้อมูลไม่ครบถ้วน: $field"]);
+        exit;
+    }
 }
 
-$username      = trim($input['username'] ?? '');
-$firstname     = trim($input['firstname'] ?? '');
-$lastname      = trim($input['lastname'] ?? '');
-$phone         = trim($input['phone'] ?? '');
-$village       = trim($input['village'] ?? '');
-$province_id   = $input['province_id'] ?? null;
-$district_id   = $input['district_id'] ?? null;
-$subdistrict_id= $input['subdistrict_id'] ?? null;
-$agency        = trim($input['agency'] ?? '');
-$password      = $input['password'] ?? '';
-$role          = 'user'; // กำหนด role เริ่มต้น
+// ถ้าไม่มี agency ให้เป็นค่าว่าง
+if (!isset($input['agency'])) $input['agency'] = "";
 
-// Validation เบื้องต้น
-if (!$username || !$firstname || !$lastname || !$phone || !$village ||
-    !$province_id || !$district_id || !$subdistrict_id || !$password) {
-    echo json_encode([
-        'status' => 'error',
-        'message' => 'ข้อมูลไม่ครบถ้วน',
-    ]);
-    exit;
-}
+// เข้ารหัสรหัสผ่าน
+$hashedPassword = password_hash($input['password'], PASSWORD_BCRYPT);
 
 // ตรวจสอบ username ซ้ำ
-$sql_check = "SELECT COUNT(*) AS cnt FROM users WHERE LOWER(username) = LOWER($1)";
-$res_check = pg_query_params($con, $sql_check, [$username]);
-$row = pg_fetch_assoc($res_check);
+$sqlCheck = "SELECT COUNT(*) AS cnt FROM users WHERE LOWER(username) = LOWER($1)";
+$resCheck = pg_query_params($con, $sqlCheck, [$input['username']]);
+$row = pg_fetch_assoc($resCheck);
 if (intval($row['cnt']) > 0) {
-    echo json_encode([
-        'status' => 'error',
-        'message' => 'ชื่อผู้ใช้งานนี้ถูกใช้งานแล้ว',
-    ]);
+    echo json_encode(['status' => 'error', 'message' => 'ชื่อผู้ใช้งานนี้ถูกใช้งานแล้ว']);
     exit;
 }
 
-// Hash password
-$hashed_password = password_hash($password, PASSWORD_DEFAULT);
+// เพิ่มผู้ใช้
+$sqlInsert = "INSERT INTO users 
+(username, firstname, lastname, phone, village, province_id, district_id, subdistrict_id, password, agency, role, created_at)
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'user',NOW())";
 
-// Insert ลง PostgreSQL
-$sql = "INSERT INTO users 
-    (username, firstname, lastname, phone, village, subdistrict_id, district_id, province_id, agency, password, role)
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)";
-
-$res = pg_query_params($con, $sql, [
-    $username,
-    $firstname,
-    $lastname,
-    $phone,
-    $village,
-    intval($subdistrict_id),
-    intval($district_id),
-    intval($province_id),
-    $agency ?: null,
-    $hashed_password,
-    $role
+$resInsert = pg_query_params($con, $sqlInsert, [
+    $input['username'],
+    $input['firstname'],
+    $input['lastname'],
+    $input['phone'],
+    $input['village'],
+    intval($input['province_id']),
+    intval($input['district_id']),
+    intval($input['subdistrict_id']),
+    $hashedPassword,
+    $input['agency']
 ]);
 
-if ($res) {
-    echo json_encode([
-        'status' => 'success',
-        'message' => 'สมัครสมาชิกสำเร็จ'
-    ]);
+if ($resInsert) {
+    echo json_encode(['status' => 'success', 'message' => 'สมัครสมาชิกสำเร็จ']);
 } else {
-    echo json_encode([
-        'status' => 'error',
-        'message' => 'Database error: ' . pg_last_error($con)
-    ]);
+    echo json_encode(['status' => 'error', 'message' => 'เกิดข้อผิดพลาด: ' . pg_last_error($con)]);
 }
 
 pg_close($con);
