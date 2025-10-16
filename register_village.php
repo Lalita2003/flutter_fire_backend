@@ -10,7 +10,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-require 'connect.php'; // ใช้ pg_connect ของ Neon
+require 'connect.php';
 
 if (!$con) {
     echo json_encode(['status' => 'error', 'message' => 'Connection failed']);
@@ -19,6 +19,10 @@ if (!$con) {
 
 // รับข้อมูล JSON
 $input = json_decode(file_get_contents("php://input"), true);
+if (!$input) {
+    echo json_encode(['status' => 'error', 'message' => 'Invalid JSON']);
+    exit;
+}
 
 // ฟิลด์ที่ต้องตรวจสอบ
 $required = ['username', 'firstname', 'lastname', 'phone', 'village', 'province_id', 'district_id', 'subdistrict_id', 'password'];
@@ -29,12 +33,9 @@ foreach ($required as $field) {
     }
 }
 
-// agency ถ้าไม่มี ให้ตั้งเป็นค่าว่าง
 $input['agency'] = $input['agency'] ?? '';
 
-// เข้ารหัสรหัสผ่าน
 $hashedPassword = password_hash($input['password'], PASSWORD_BCRYPT);
-
 $province_id = intval($input['province_id']);
 $district_id = intval($input['district_id']);
 $subdistrict_id = intval($input['subdistrict_id']);
