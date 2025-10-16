@@ -4,29 +4,13 @@ header("Access-Control-Allow-Methods: POST, GET, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
 header("Content-Type: application/json; charset=UTF-8");
 
-// ตรวจสอบว่าเรียกด้วย POST เท่านั้น
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['status' => 'error', 'message' => 'Method not allowed']);
-    exit;
-}
+require 'connect.php'; // pg_connect
 
-require 'connect.php'; // ใช้ pg_connect ของ Neon
-
-if (!$con) {
-    echo json_encode(['status' => 'error', 'message' => 'Connection failed']);
-    exit();
-}
-
-// รับข้อมูล JSON
 $input = json_decode(file_get_contents("php://input"), true);
-if (!$input) {
-    echo json_encode(['status' => 'error', 'message' => 'Invalid JSON']);
-    exit;
-}
 
-// ฟิลด์ที่ต้องตรวจสอบ
+// ตรวจสอบฟิลด์ required
 $required = ['username', 'firstname', 'lastname', 'phone', 'village', 'province_id', 'district_id', 'subdistrict_id', 'password'];
+
 foreach ($required as $field) {
     if (empty($input[$field])) {
         echo json_encode(['status' => 'error', 'message' => "ข้อมูลไม่ครบถ้วน: $field"]);
@@ -35,19 +19,15 @@ foreach ($required as $field) {
 }
 
 // ถ้าไม่มี agency ให้เป็นค่าว่าง
-$input['agency'] = $input['agency'] ?? '';
+if (!isset($input['agency'])) $input['agency'] = "";
 
 // เข้ารหัสรหัสผ่าน
 $hashedPassword = password_hash($input['password'], PASSWORD_BCRYPT);
 
-// แปลง ID เป็น integer
-$province_id = intval($input['province_id']);
-$district_id = intval($input['district_id']);
-$subdistrict_id = intval($input['subdistrict_id']);
-$created_at = date('Y-m-d H:i:s');
-$role = 'village_head'; // ตั้ง role เป็น village_head
+// กำหนด role เป็น village_head
+$role = 'village_head';
 
-// ตรวจสอบ username ซ้ำ แบบไม่สน case
+// ตรวจสอบ username ซ้ำ (ไม่ case-sensitive)
 $sqlCheck = "SELECT COUNT(*) AS cnt FROM users WHERE LOWER(username) = LOWER($1)";
 $resCheck = pg_query_params($con, $sqlCheck, [$input['username']]);
 $row = pg_fetch_assoc($resCheck);
@@ -56,10 +36,10 @@ if (intval($row['cnt']) > 0) {
     exit;
 }
 
-// เพิ่มผู้ใช้
+// เพิ่มผู้ใช้ประเภท village_head
 $sqlInsert = "INSERT INTO users 
 (username, firstname, lastname, phone, village, province_id, district_id, subdistrict_id, password, agency, role, created_at)
-VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)";
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,NOW())";
 
 $params = [
     $input['username'],
@@ -67,13 +47,12 @@ $params = [
     $input['lastname'],
     $input['phone'],
     $input['village'],
-    $province_id,
-    $district_id,
-    $subdistrict_id,
+    intval($input['province_id']),
+    intval($input['district_id']),
+    intval($input['subdistrict_id']),
     $hashedPassword,
     $input['agency'],
-    $role,
-    $created_at
+    $role
 ];
 
 $resInsert = pg_query_params($con, $sqlInsert, $params);
