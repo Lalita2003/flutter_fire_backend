@@ -41,12 +41,12 @@ RETURNING id
 $insert_stmt = pg_prepare($con, "insert_notification", $sql_insert);
 $insert_exec = pg_execute($con, "insert_notification", array($user_id, $title, $message, $status, $is_read));
 
-if ($insert_exec) {
+if ($insert_exec && pg_num_rows($insert_exec) > 0) {
     $row = pg_fetch_assoc($insert_exec);
     echo json_encode(["success" => true, "notification_id" => intval($row['id'])]);
 } else {
     $err = pg_last_error($con);
-    echo json_encode(["success" => false, "error" => $err]);
+    echo json_encode(["success" => false, "error" => $err ?: "Insert failed"]);
 }
 
 pg_close($con);
