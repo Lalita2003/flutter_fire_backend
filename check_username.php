@@ -4,7 +4,7 @@ header("Access-Control-Allow-Methods: POST, GET, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
 header("Content-Type: application/json; charset=UTF-8");
 
-require 'connect.php'; // ใช้ pg_connect ของ Neon
+require 'connect.php'; // pg_connect
 
 $input = json_decode(file_get_contents("php://input"), true);
 $username = isset($input['username']) ? trim($input['username']) : '';
@@ -18,6 +18,7 @@ if (empty($username)) {
     exit;
 }
 
+// เช็ค username
 $sql = "SELECT COUNT(*) AS cnt FROM users WHERE LOWER(username) = LOWER($1)";
 $res = pg_query_params($con, $sql, [$username]);
 
