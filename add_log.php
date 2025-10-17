@@ -1,27 +1,38 @@
 <?php
 header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: POST, OPTIONS");
+header("Access-Control-Allow-Methods: POST, GET, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type");
-header("Content-Type: application/json");
+header('Content-Type: application/json');
 
-require 'connect.php'; // เชื่อมต่อ DB
+require 'connect.php'; // connect.php สำหรับ PostgreSQL
 
-$input = json_decode(file_get_contents("php://input"), true);
+$user_id = isset($_POST['user_id']) ? intval($_POST['user_id']) : 0;
+$action = $_POST['action'] ?? '';
+$target_type = $_POST['target_type'] ?? 'user';
+$description = $_POST['description'] ?? '';
 
-$user_id = isset($input['user_id']) ? intval($input['user_id']) : 0;
-$action = isset($input['action']) ? trim($input['action']) : '';
-$target_type = isset($input['target_type']) ? trim($input['target_type']) : 'user';
-$description = isset($input['description']) ? trim($input['description']) : '';
+if ($user_id <= 0 || empty($action)) {
+    echo json_encode(['status'=>'error','message'=>'ข้อมูลไม่ครบ']);
+    exit;
+}
 
-if ($user_id > 0 && $action != '') {
-    $stmt = $con->prepare("INSERT INTO system_logs (user_id, action, target_type, description) VALUES (?, ?, ?, ?)");
-    $stmt->bind_param("isss", $user_id, $action, $target_type, $description);
-    if ($stmt->execute()) {
-        echo json_encode(["status" => "success"]);
+// เตรียม query
+$result = pg_prepare($conn, "insert_log", 
+    "INSERT INTO system_logs (user_id, action, target_type, description) VALUES ($1, $2, $3, $4)"
+);
+
+if ($result) {
+    $exec = pg_execute($conn, "insert_log", array($user_id, $action, $target_type, $description));
+    if ($exec) {
+        echo json_encode(['status'=>'success', 'message'=>'บันทึก log สำเร็จ']);
     } else {
-        echo json_encode(["status" => "error", "message" => $stmt->error]);
+        $err = pg_last_error($conn);
+        echo json_encode(['status'=>'error', 'message'=>"Failed to execute query: $err"]);
     }
 } else {
-    echo json_encode(["status" => "error", "message" => "Invalid data"]);
+    $err = pg_last_error($conn);
+    echo json_encode(['status'=>'error', 'message'=>"Failed to prepare query: $err"]);
 }
+
+pg_close($conn);
 ?>
