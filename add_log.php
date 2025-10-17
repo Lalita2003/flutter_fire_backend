@@ -4,14 +4,14 @@ header("Access-Control-Allow-Methods: POST, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization");
 header("Content-Type: application/json; charset=UTF-8");
 
-require 'connect.php';
+require 'connect.php'; // เชื่อมต่อฐานข้อมูล PostgreSQL
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit();
 }
 
-// รับค่า POST
+// รับค่าจาก POST
 $user_id = isset($_POST['user_id']) ? intval($_POST['user_id']) : 0;
 $action = isset($_POST['action']) ? trim($_POST['action']) : '';
 $target_type = isset($_POST['target_type']) ? trim($_POST['target_type']) : '';
@@ -25,10 +25,10 @@ if ($user_id <= 0 || $action === '') {
     exit();
 }
 
-// ถ้า target_type ว่าง ให้ใช้ role จาก POST หรือ 'user' เป็น default
-if ($target_type === '') $target_type = isset($_POST['role']) ? $_POST['role'] : 'user';
+// กำหนด default target_type เป็น 'user' หากว่าง
+if ($target_type === '') $target_type = 'user';
 
-// Insert log
+// บันทึก log
 $sql = "INSERT INTO logs (user_id, action, target_type, description, log_time) 
         VALUES ($1, $2, $3, $4, NOW())";
 
