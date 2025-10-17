@@ -11,7 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
-// อ่าน JSON body แทน $_POST
+// อ่าน JSON body
 $input = json_decode(file_get_contents('php://input'), true);
 
 $user_id = isset($input['user_id']) ? intval($input['user_id']) : 0;
@@ -35,6 +35,9 @@ $result = pg_query_params($conn, $sql, [$user_id, $action, $target_type, $descri
 if ($result) {
     echo json_encode(["status" => "success", "message" => "บันทึก Log เรียบร้อย"]);
 } else {
-    echo json_encode(["status" => "error", "message" => "ไม่สามารถบันทึก Log ได้: ".pg_last_error($conn)]);
+    echo json_encode([
+        "status" => "error",
+        "message" => "ไม่สามารถบันทึก Log ได้: " . pg_last_error($conn)
+    ]);
 }
 ?>
