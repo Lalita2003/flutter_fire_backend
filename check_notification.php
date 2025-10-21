@@ -5,6 +5,7 @@ require "connect.php"; // connect.php สำหรับ PostgreSQL
 
 $user_id = isset($_GET['user_id']) ? intval($_GET['user_id']) : 0;
 $title   = isset($_GET['title']) ? trim($_GET['title']) : '';
+$message = isset($_GET['message']) ? trim($_GET['message']) : '';
 $status  = isset($_GET['status']) ? trim($_GET['status']) : '';
 
 if (!$con) {
@@ -12,21 +13,15 @@ if (!$con) {
     exit;
 }
 
-if ($user_id <= 0 || empty($title) || empty($status)) {
+if ($user_id <= 0 || empty($title) || empty($message) || empty($status)) {
     echo json_encode(["success" => false, "error" => "Missing required fields"]);
     exit;
 }
 
-// ใช้วันที่วันนี้
-$today = date('Y-m-d');
-
-// เช็คเฉพาะ title + status + วันปัจจุบัน
-$sql = "SELECT id 
-        FROM notifications 
-        WHERE user_id=$1 AND title=$2 AND status=$3 AND DATE(created_at) = '$today'
-        LIMIT 1";
+// เตรียม query
+$sql = "SELECT id FROM notifications WHERE user_id=$1 AND title=$2 AND message=$3 AND status=$4 LIMIT 1";
 $stmt = pg_prepare($con, "check_notification", $sql);
-$result = pg_execute($con, "check_notification", array($user_id, $title, $status));
+$result = pg_execute($con, "check_notification", array($user_id, $title, $message, $status));
 
 $exists = false;
 $notifId = null;
