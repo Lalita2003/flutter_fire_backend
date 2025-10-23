@@ -25,6 +25,12 @@ if (!$con) {
     exit();
 }
 
+
+// ✅ ตั้ง timezone ให้เป็นเวลาไทย (Asia/Bangkok)
+date_default_timezone_set('Asia/Bangkok');
+
+
+
 // ตั้ง header JSON UTF-8
 header('Content-Type: application/json; charset=utf-8');
 ?>
