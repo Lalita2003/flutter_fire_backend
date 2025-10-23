@@ -29,7 +29,8 @@ if (!$con) {
 // ✅ ตั้ง timezone ให้เป็นเวลาไทย (Asia/Bangkok)
 date_default_timezone_set('Asia/Bangkok');
 
-
+// ✅ ตั้ง timezone ฝั่ง PostgreSQL session ให้เป็นเวลาไทยด้วย
+pg_query($con, "SET TIMEZONE TO 'Asia/Bangkok'");
 
 // ตั้ง header JSON UTF-8
 header('Content-Type: application/json; charset=utf-8');
